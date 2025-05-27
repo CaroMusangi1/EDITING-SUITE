@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Video & Audio Quality Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background: linear-gradient(145deg,rgb(9, 23, 33) 0%,rgb(24, 29, 57) 50%,rgb(6, 10, 52) 100%);
+            font-family: Arial, sans-serif;
+            color: light blue; 
+            transition: background 1s ease-in-out;
+        }
+        .container {
+            max-width: 700px;
+            margin-top: 50px;
+            background:rgb(109, 138, 158);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            color: black; /* text inside container remains dark */
+        }
+        .btn-primary {
+            background-color: rgb(15, 25, 35);
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color:rgb(95, 109, 140);
+        }
+        .result {
+            margin-top: 30px;
+        }
+        h5 {
+            margin-top: 20px;
+            color:rgb(1, 6, 12);
+        }
+        .text-danger {
+            font-weight: bold;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+    background:rgb(2, 8, 14); /* dark navy blue */
+}
+
+input[type=range]::-moz-range-track {
+    background:rgb(199, 207, 216);
+}
+
+input[type=range]::-ms-track {
+    background: #001f3f;
+}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center text-dark">Video & Audio Quality Mocker</h2>
+    <form id="uploadForm">
+        <div class="mb-3">
+            <label for="video" class="form-label">Select Video</label>
+            <input type="file" class="form-control" id="video" name="video" required accept="video/*" />
+        </div>
+        <div class="mb-3">
+            <label for="threshold" class="form-label">Blur Threshold: <span id="threshValue">100</span></label>
+            <input type="range" class="form-range" min="50" max="300" value="100" id="threshold" />
+        </div>
+        <div class="mb-3">
+            <label for="sample_rate" class="form-label">Frame Sample Rate</label>
+            <input type="number" class="form-control" id="sample_rate" name="sample_rate" value="5" min="1" />
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Analyze Video</button>
+    </form>
+
+    <!-- Progress display while analyzing -->
+    <div id="progressSection" style="display:none; margin-top: 20px; font-weight: bold; color:rgb(2, 7, 12);">
+      Analyzing... <span id="progressPercent">0%</span>
+    </div>
+
+    <div class="result" id="resultSection" style="display: none;">
+        <h4 class="mt-4">Analysis Result</h4>
+
+        <h5>Video Analysis</h5>
+        <ul class="list-group" id="videoResultsList"></ul>
+
+        <h5>Audio Analysis</h5>
+        <ul class="list-group" id="audioResultsList"></ul>
+
+        <button class="btn btn-secondary mt-3" id="downloadReport">Download PDF Report</button>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('uploadForm');
+    const videoResultsList = document.getElementById('videoResultsList');
+    const audioResultsList = document.getElementById('audioResultsList');
+    const resultSection = document.getElementById('resultSection');
+    const threshSlider = document.getElementById('threshold');
+    const threshValue = document.getElementById('threshValue');
+    const progressSection = document.getElementById('progressSection');
+    const progressPercent = document.getElementById('progressPercent');
+
+    let lastResult = null;
+
+    threshSlider.addEventListener('input', () => {
+        threshValue.textContent = threshSlider.value;
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Show progress
+        progressSection.style.display = 'block';
+        progressPercent.textContent = '0%';
+
+        // Clear previous results & hide result section
+        resultSection.style.display = 'none';
+        videoResultsList.innerHTML = '';
+        audioResultsList.innerHTML = '';
+
+        const formData = new FormData();
+        const video = document.getElementById('video').files[0];
+        const threshold = document.getElementById('threshold').value;
+        const sampleRate = document.getElementById('sample_rate').value;
+
+        formData.append('video', video);
+        formData.append('threshold', threshold);
+        formData.append('sample_rate', sampleRate);
+
+        // Simulate progress update while waiting for backend response
+        let progress = 0;
+        const interval = setInterval(() => {
+            if (progress < 90) { // simulate until 90%
+                progress += 10;
+                progressPercent.textContent = progress + '%';
+            }
+        }, 500);
+
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        clearInterval(interval);
+        progressPercent.textContent = '100%';
+
+        const data = await response.json();
+        lastResult = data;
+
+        // Hide progress
+        progressSection.style.display = 'none';
+
+        // Display video analysis results
+        if (data.video_analysis) {
+            for (const key in data.video_analysis) {
+                const item = document.createElement('li');
+                item.classList.add('list-group-item');
+                item.textContent = `${key.replace(/_/g, ' ')}: ${data.video_analysis[key]}`;
+                videoResultsList.appendChild(item);
+            }
+        } else {
+            videoResultsList.innerHTML = '<li class="list-group-item text-danger">No video analysis data found.</li>';
+        }
+
+        // Display audio analysis results + audio quality grade
+        if (data.audio_analysis) {
+            for (const key in data.audio_analysis) {
+                if (key === 'quality_grade') continue; // skip here, append later
+
+                const item = document.createElement('li');
+                item.classList.add('list-group-item');
+
+                let value = data.audio_analysis[key];
+                if (Array.isArray(value)) {
+                    value = value.length ? value.join(', ') : 'None';
+                } else if (typeof value === 'boolean') {
+                    value = value ? 'Yes' : 'No';
+                }
+
+                item.textContent = `${key.replace(/_/g, ' ')}: ${value}`;
+                audioResultsList.appendChild(item);
+            }
+            // Append overall audio quality grade
+            const gradeItem = document.createElement('li');
+            gradeItem.classList.add('list-group-item');
+            gradeItem.textContent = `Audio Quality Grade: ${data.audio_analysis.quality_grade}`;
+            audioResultsList.appendChild(gradeItem);
+
+        } else {
+            audioResultsList.innerHTML = '<li class="list-group-item text-danger">No audio analysis data found.</li>';
+        }
+
+        resultSection.style.display = 'block';
+    });
+
+    document.getElementById('downloadReport').addEventListener('click', async () => {
+        if (!lastResult) return;
+        const response = await fetch('/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lastResult)
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'video_audio_quality_report.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    });
+</script>
+</body>
+</html>
