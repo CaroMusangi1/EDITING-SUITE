@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center text-pink mb-4">📤 Upload New Sound</h2>
+  <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" class="p-4 bg-white shadow rounded">
+
+    <div class="mb-3">
+      <label for="title" class="form-label">Title</label>
+      <select class="form-control" name="title" id="title" required>
+        <option value="" disabled selected>Select a title</option>
+        <option value="Weather">Weather</option>
+        <option value="Nature">Nature</option>
+        <option value="Animals">Animals</option>
+        <option value="Humans">Humans</option>
+        <option value="War">War</option>
+        <option value="Ambient">Ambient</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="category" class="form-label">Category</label>
+      <input type="text" class="form-control" name="category" id="category" placeholder="e.g., Rainy, Footsteps, Roar" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="file" class="form-label">Sound File (MP3/WAV)</label>
+      <input type="file" class="form-control" name="file" id="file" accept=".mp3, .wav" required>
+    </div>
+
+    <button type="submit" class="btn btn-pink w-100">Upload</button>
+  </form>
+</div>
+{% endblock %}

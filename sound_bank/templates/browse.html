@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-center text-pink mb-4">📁 Browse Sound Library</h2>
+
+<form method="get" action="{{ url_for('browse') }}" class="mb-4">
+  <div class="input-group">
+    <input type="text" class="form-control" name="q" placeholder="Search by title or category..." value="{{ request.args.get('q', '') }}">
+    <button class="btn btn-pink" type="submit">Search</button>
+  </div>
+</form>
+
+{% if sounds %}
+  {% set grouped = sounds|groupby('title') %}
+  {% for title, items in grouped %}
+    <div class="mb-5">
+      <h3 class="text-primary border-bottom pb-2 mb-3">{{ title }}</h3>
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for sound in items %}
+        <div class="col">
+          <div class="card shadow border-0 h-100">
+            <div class="card-body">
+              <h5 class="card-title text-pink">{{ sound.category }}</h5>
+              <audio controls class="w-100 mb-2">
+                <source src="{{ url_for('static', filename='sounds/' ~ sound.filename) }}" type="audio/mpeg">
+                Your browser does not support the audio tag.
+              </audio>
+              <a href="{{ url_for('download', filename=sound.filename) }}" class="btn btn-sm btn-outline-primary">⬇️ Download</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted text-center">No matching sounds found.</p>
+{% endif %}
+{% endblock %}

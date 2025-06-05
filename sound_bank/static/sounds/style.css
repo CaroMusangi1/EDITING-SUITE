@@ -1,0 +1,22 @@
+body {
+  background-color: #fff0f5;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.navbar-brand, .text-pink {
+  color: #d63384 !important;
+}
+
+.btn-pink, .btn-outline-pink {
+  background-color: #d63384;
+  color: white;
+}
+
+.btn-outline-pink:hover {
+  background-color: #c2185b;
+  color: white;
+}
+
+.border-pink {
+  border: 2px solid #f8bbd0;
+}
