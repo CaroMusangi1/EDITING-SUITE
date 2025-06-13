@@ -2,7 +2,6 @@
 {% block content %}
 <div class="container mt-5">
 
-  <!-- 🔊 Hero Section -->
   <div class="text-center mb-4">
     <h1 class="display-5 fw-bold text-pink">🎧 Sound Studio Resources</h1>
     <p class="lead">Browse, preview, and download high-quality sound effects for your editing projects.</p>
@@ -14,13 +13,11 @@
     {% endif %}
   </div>
 
-  <!-- 🔍 Search Bar -->
   <form method="get" action="{{ url_for('index') }}" class="input-group mb-4">
     <input type="text" class="form-control" placeholder="Search by title or category..." name="q" value="{{ request.args.get('q', '') }}">
     <button type="submit" class="btn btn-outline-secondary">Search</button>
   </form>
 
-  <!-- 📂 Grouped Sounds by Title -->
   {% if sounds %}
     {% set grouped = sounds|groupby('title') %}
     {% for title, items in grouped %}
@@ -36,11 +33,23 @@
                   <source src="{{ url_for('static', filename='sounds/' ~ sound.filename) }}" type="audio/mpeg">
                   Your browser does not support the audio element.
                 </audio>
-                <a href="{{ url_for('download', filename=sound.filename) }}" class="btn btn-sm btn-outline-primary">⬇️ Download</a>
 
-                <!-- ✅ Delete button for uploader -->
-                {% if session.get('user_id') and sound.user_id == session.get('user_id') %}
-                  <form action="{{ url_for('delete_sound', sound_id=sound.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this sound?');">
+                <div class="d-flex justify-content-between align-items-center">
+                  <a href="{{ url_for('download', filename=sound.filename) }}" class="btn btn-sm btn-outline-primary">⬇️ Download</a>
+
+                  {% if user %}
+                    {% if sound.id in user_favorite_ids %}
+                      <a href="{{ url_for('unfavorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-danger">💔</a>
+                    {% else %}
+                      <a href="{{ url_for('favorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-success">❤️</a>
+                    {% endif %}
+                  {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-secondary">🤍</a>
+                  {% endif %}
+                </div>
+
+                {% if session.get('user_id') and (user.id == sound.user_id or user.is_admin) %}
+                  <form action="{{ url_for('delete_sound', sound_id=sound.id) }}" method="POST" class="d-inline mt-2" onsubmit="return confirm('Are you sure you want to delete this sound?');">
                     <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
                   </form>
                 {% endif %}
@@ -54,6 +63,5 @@
   {% else %}
     <p class="text-muted text-center mt-5">No sounds found. Try a different keyword or upload your first sound!</p>
   {% endif %}
-
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2 class="text-center text-pink mb-4">⭐ Your Favorites</h2>
-{% if sounds %}
+{% if paginated_sounds %}
   {% include 'partials/sound_cards.html' %}
 {% else %}
   <p class="text-center text-muted">You haven't saved any sounds yet.</p>

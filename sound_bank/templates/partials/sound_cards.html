@@ -1,11 +1,10 @@
 <div class="sound-cards">
-  {% if sounds %}
-    {% set grouped = sounds|groupby('title') %}
-    {% for title, items in grouped %}
+  {% if paginated_sounds %}
+    {% for title, data in paginated_sounds.items() %}
       <div class="mb-5">
         <h4 class="text-primary border-bottom pb-2 mb-3">{{ title }}</h4>
         <div class="row row-cols-1 row-cols-md-3 g-4">
-          {% for sound in items %}
+          {% for sound in data['items'] %}
             <div class="col">
               <div class="card shadow border-0 h-100">
                 <div class="card-body">
@@ -20,6 +19,20 @@
             </div>
           {% endfor %}
         </div>
+
+        {% if data['has_next'] or data['current_page'] > 1 %}
+          <div class="text-end mt-2">
+            {% set page_param = (title ~ '_page') | urlencode %}
+            {% if data['current_page'] > 1 %}
+              <a href="{{ request.url | update_query_params(page_param, data['current_page'] - 1) }}"
+                 class="btn btn-outline-secondary btn-sm me-2">◀️ Previous</a>
+            {% endif %}
+            {% if data['has_next'] %}
+              <a href="{{ request.url | update_query_params(page_param, data['current_page'] + 1) }}"
+                 class="btn btn-outline-primary btn-sm">More from "{{ title }}"</a>
+            {% endif %}
+          </div>
+        {% endif %}
       </div>
     {% endfor %}
   {% else %}
