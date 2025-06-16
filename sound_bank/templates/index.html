@@ -1,67 +1,120 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<div class="container mt-5">
+<style>
+  .index-overlay {
+    background-color: rgba(235, 231, 231, 0.62); /* white with 85% opacity */
+    border-radius: 1px;
+    padding: 40px 30px;
+    box-shadow: 0 4px 20px rgba(183, 189, 195, 0.08);
+    margin-top: 20px;
+    margin-bottom: 50px;
+    margin-left: -12
+    margin-right:-12  
+  }
+</style>
 
-  <div class="text-center mb-4">
-    <h1 class="display-5 fw-bold text-pink">🎧 Sound Studio Resources</h1>
-    <p class="lead">Browse, preview, and download high-quality sound effects for your editing projects.</p>
-    {% if not session.get('user_id') %}
-      <a href="{{ url_for('login') }}" class="btn btn-outline-secondary me-2">Login</a>
-      <a href="{{ url_for('register') }}" class="btn btn-pink">Register</a>
-    {% else %}
-      <a href="{{ url_for('upload') }}" class="btn btn-pink">Upload Your Sound</a>
-    {% endif %}
-  </div>
+<div class="container index-overlay">
 
-  <form method="get" action="{{ url_for('index') }}" class="input-group mb-4">
-    <input type="text" class="form-control" placeholder="Search by title or category..." name="q" value="{{ request.args.get('q', '') }}">
-    <button type="submit" class="btn btn-outline-secondary">Search</button>
+  {% if request.path == '/' %}
+    <div class="text-center mb-4">
+      <h1 class="display-5 fw-bold text-pink">🎧 Sound Studio Resources</h1>
+      <p class="lead">Browse, preview, and download high-quality sound effects for your editing projects.</p>
+      {% if not session.get('user_id') %}
+        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary me-2">Login</a>
+        <a href="{{ url_for('register') }}" class="btn btn-pink">Register</a>
+      {% else %}
+        <a href="{{ url_for('upload') }}" class="btn btn-pink">Upload Your Sound</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <h2 class="text-center text-pink mb-4">📁 Browse Sound Library</h2>
+
+  <form method="get" action="{{ url_for('browse') if request.path != '/' else url_for('index') }}" class="mb-4">
+    <div class="row g-2">
+      <div class="col-md-6">
+        <div class="input-group">
+          <input type="text" class="form-control" name="q" placeholder="Search by title or category..." value="{{ request.args.get('q', '') }}">
+          <button class="btn btn-pink" type="submit">Search</button>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <select class="form-select" name="category" onchange="this.form.submit()">
+          <option value="">🔎 Filter by category</option>
+          {% for category in categories %}
+            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
   </form>
 
-  {% if sounds %}
-    {% set grouped = sounds|groupby('title') %}
-    {% for title, items in grouped %}
+  {% if paginated_sounds %}
+    {% for title, group in paginated_sounds.items() %}
       <div class="mb-5">
         <h3 class="text-primary border-bottom pb-2 mb-3">{{ title }}</h3>
         <div class="row row-cols-1 row-cols-md-3 g-4">
-          {% for sound in items %}
-          <div class="col">
-            <div class="card shadow border-0 h-100">
-              <div class="card-body">
-                <h5 class="card-title text-pink">{{ sound.category }}</h5>
-                <audio controls class="w-100 mb-2">
-                  <source src="{{ url_for('static', filename='sounds/' ~ sound.filename) }}" type="audio/mpeg">
-                  Your browser does not support the audio element.
-                </audio>
+          {% for sound in group['items'] %}
+            <div class="col">
+              <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                  <h5 class="card-title text-pink">{{ sound.category }}</h5>
+                  <audio controls class="w-100 mb-2">
+                    <source src="{{ url_for('static', filename='sounds/' ~ sound.filename) }}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                  </audio>
 
-                <div class="d-flex justify-content-between align-items-center">
-                  <a href="{{ url_for('download', filename=sound.filename) }}" class="btn btn-sm btn-outline-primary">⬇️ Download</a>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('download', filename=sound.filename) }}" class="btn btn-sm btn-outline-primary">⬇️ Download</a>
 
-                  {% if user %}
-                    {% if sound.id in user_favorite_ids %}
-                      <a href="{{ url_for('unfavorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-danger">💔</a>
+                    {% if user %}
+                      {% if sound.id in user_favorite_ids %}
+                        <a href="{{ url_for('unfavorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-danger">💔</a>
+                      {% else %}
+                        <a href="{{ url_for('favorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-success">❤️</a>
+                      {% endif %}
                     {% else %}
-                      <a href="{{ url_for('favorite', sound_id=sound.id) }}" class="btn btn-sm btn-outline-success">❤️</a>
+                      <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-secondary">🤍</a>
                     {% endif %}
-                  {% else %}
-                    <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-secondary">🤍</a>
+                  </div>
+
+                  {% if user and (sound.id in user_uploaded_sound_ids or user.is_admin) %}
+                    <form action="{{ url_for('delete_sound', sound_id=sound.id) }}" method="POST" class="d-inline mt-2" onsubmit="return confirm('Are you sure you want to delete this sound?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
+                    </form>
                   {% endif %}
                 </div>
-
-                {% if session.get('user_id') and (user.id == sound.user_id or user.is_admin) %}
-                  <form action="{{ url_for('delete_sound', sound_id=sound.id) }}" method="POST" class="d-inline mt-2" onsubmit="return confirm('Are you sure you want to delete this sound?');">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
-                  </form>
-                {% endif %}
               </div>
             </div>
-          </div>
           {% endfor %}
         </div>
+
+        {% if group['has_next'] or group['current_page'] > 1 %}
+          <div class="text-end mt-3">
+            {% set page_param = group['page_param'] %}
+            {% set shared_args = request.args.to_dict() %}
+            {% for other_title, other_group in paginated_sounds.items() %}
+              {% set _ = shared_args.update({other_group['page_param']: other_group['current_page']}) %}
+            {% endfor %}
+
+            {% if group['current_page'] > 1 %}
+              {% set prev_args = shared_args.copy() %}
+              {% set _ = prev_args.update({page_param: group['current_page'] - 1}) %}
+              <a class="btn btn-outline-secondary btn-sm me-2" href="{{ url_for('browse', **prev_args) }}">◀️ Previous</a>
+            {% endif %}
+
+            {% if group['has_next'] %}
+              {% set next_args = shared_args.copy() %}
+              {% set _ = next_args.update({page_param: group['current_page'] + 1}) %}
+              <a class="btn btn-pink btn-sm" href="{{ url_for('browse', **next_args) }}">More from "{{ title }}"</a>
+            {% endif %}
+          </div>
+        {% endif %}
       </div>
     {% endfor %}
   {% else %}
-    <p class="text-muted text-center mt-5">No sounds found. Try a different keyword or upload your first sound!</p>
+    <p class="text-muted text-center">No sounds found.</p>
   {% endif %}
 </div>
 {% endblock %}
